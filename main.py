@@ -1,18 +1,20 @@
+import os
+import struct
+import stat
+
+from utils import bread, bwrite
+from Index import Index
+from ParseCmd import parse_cmd
+import difflib
+import zlib
 import enum
 import hashlib
 
-import struct
-import os
-
-import zlib
-import difflib
-
-from ParseCmd import parse_cmd
-from Index import Index
-from utils import bread, bwrite
 from Object import Object
-from Blob import Blob
 from Tree import Tree
+from Blob import Blob
+from Commit import Commit
+from Commitor import Commitor
 
 
 class CatMode(enum.IntEnum):
@@ -86,13 +88,12 @@ class GitRepo():
         self.__index.write_index()
 
     def ls_file(self, stage):
-        ientries = self.__index.get_ientries()
-        for ientry in ientries:
-            out = ""
-            if stage:
-                out += f"{ientry.getmode():o} {ientry.getsha1()} {ientry.getflags() >> 12}\t\t"
-            out += ientry.getpath()
-            print(out)
+        if stage:
+            print(self.__index)
+        else:
+            ientries = self.__index.get_ientries()
+            for ientry in ientries:
+                print(ientry.getpath())
 
     def status(self):
         fchanged, fcreate, fdelete = self.__diff_working2index()
@@ -160,20 +161,24 @@ class GitRepo():
             assert obj_type == ObjType.BLOB, "only support blob..."
             print(obj.getrawobj())
         elif (mode == CatMode.BLOB):
-            assert obj.isblob(), f"object type is not blob..."
+            assert obj.isblob(), "object type is not blob..."
             print(obj.getrawobj())
         elif (mode == CatMode.TREE):
-            assert obj.istree(), f"object type is not blob..."
+            assert obj.istree(), "object type is not tree..."
+            print(obj.getrawobj())
+        elif (mode == CatMode.COMMIT):
+            assert obj.iscommit(), "object type is not commit..."
             print(obj.getrawobj())
         else:
             assert False, "only support blob..."
 
-    def commit(self):
-        tree = Tree()
-        for entry in self.__index.get_ientries():
-            tree.add_tentry(entry.getmode(), entry.getpath(), entry.getsha1())
-        obj = Object(tree, self.__repo_path)
-        print(obj.hash_object())
+    def commit(self, msg):
+        commior = Commitor(self.__repo_path)
+        commior.commit(self.__index.get_ientries(), msg)
+
+    def log(self):
+        commitor = Commitor(self.__repo_path)
+        commitor.log()
 
 
 if __name__ == "__main__":
@@ -220,4 +225,6 @@ if __name__ == "__main__":
     elif args.command == "diff":
         repo.diff()
     elif args.command == "commit":
-        repo.commit()
+        repo.commit(args.msg)
+    elif args.command == "log":
+        repo.log()

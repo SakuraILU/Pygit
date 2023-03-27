@@ -35,7 +35,7 @@ def parse_cmd():
                              dest="size", help="show object size")
     catfile_cmd.add_argument("-p", action="store_true",
                              dest="pretty", help="pretty-print object's content")
-    catfile_cmd.add_argument(choices=["blob", "tree"], nargs="?", dest="mode",
+    catfile_cmd.add_argument(choices=["blob", "tree", "commit"], nargs="?", dest="mode",
                              help="The name (complete or prefix of the hash number) of the object to show")
     catfile_cmd.add_argument(dest="sha1_prefix",
                              help="Specify the object type (default: \"blob\").")
@@ -45,5 +45,10 @@ def parse_cmd():
 
     commit_cmd = subparsers.add_parser(
         "commit", help="Record changes to the repository")
+    commit_cmd.add_argument("-m", default="", dest="msg",
+                            help="Use the given <msg> as the commit message")
+
+    log_cmd = subparsers.add_parser(
+        "log")
 
     return parser.parse_args()

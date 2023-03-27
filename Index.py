@@ -178,3 +178,10 @@ class Index():
             idata = idata[ientry.getbytelen():]
 
             self.__ientries[ientry.getpath()] = ientry
+
+    def __str__(self):
+        out = ""
+        for ientry in self.__ientries.values():
+            out += f"{ientry.getmode():o} {ientry.getsha1()} {ientry.getflags() >> 12}\t\t{ientry.getpath()}\n"
+
+        return out[:-1]  # move the last '\n' char

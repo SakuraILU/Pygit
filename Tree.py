@@ -90,5 +90,6 @@ class Tree():
     def __str__(self):
         out = ""
         for entry in self.__tentries.values():
-            out += f"{entry.getmode():o} {entry.gettypename()} {entry.getsha1()}\t{entry.getpath()}\n"
-        return out
+            out += f"{entry.getmode():0>6o} {entry.gettypename()} {entry.getsha1()}\t{entry.getpath()}\n"
+
+        return out[:-1]  # move the last '\n' char

@@ -8,6 +8,7 @@ from utils import bread, bwrite
 
 from Blob import Blob
 from Tree import Tree
+from Commit import Commit
 
 
 class Object():
@@ -43,6 +44,8 @@ class Object():
             self.__type = self.ObjType.BLOB
         elif isinstance(raw_obj, Tree):
             self.__type = self.ObjType.TREE
+        elif isinstance(raw_obj, Commit):
+            self.__type = self.ObjType.COMMIT
         else:
             assert False, "unsupported object type"
 
@@ -52,6 +55,8 @@ class Object():
             self.__raw_obj = Blob(content)
         elif self.istree():
             self.__raw_obj = Tree(content)
+        elif self.iscommit():
+            self.__raw_obj = Commit(content)
 
     def getlen(self):
         return len(self.__raw_obj.serialization())
@@ -67,6 +72,9 @@ class Object():
 
     def istree(self):
         return self.ObjType.TREE == self.__type
+
+    def iscommit(self):
+        return self.ObjType.COMMIT == self.__type
 
     def hash_object(self, write=True):
         header = f"{self.__type} {self.getlen()}\x00".encode()
@@ -99,6 +107,7 @@ class Object():
                     obj_file = os.path.join(dirname, file)
                     break
         return obj_file
+        haha
 
     def read_object(self, sha1_prefix):
         obj_file = self.find_object(sha1_prefix)
