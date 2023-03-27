@@ -69,7 +69,7 @@ class Commit():
         content += f"\n"
         content += self.__msg
 
-        return content
+        return content.encode()
 
     def get_parent_sha1s(self):
         return self.__parent_sha1s

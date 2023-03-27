@@ -83,13 +83,12 @@ class Commitor():
             assert obj.iscommit(), "not a commit..."
             commit = obj.getrawobj()
 
+            parent_sha1s = commit.get_parent_sha1s()
+            assert len(parent_sha1s) == 1 or len(
+                parent_sha1s) == 0, "only support a linear commit history..."
+
             commit_str = str(commit)
             commit_str = "* \033[33m" + commit_str + "\n"
-            out += textwrap.indent(commit_str,
-                                   "\033[31m| \033[0m", lambda line: line[0] != "*")
-            parent_sha1s = commit.get_parent_sha1s()
-            assert len(
-                parent_sha1s) == 1 or len(parent_sha1s) == 0, "only support a linear commit history..."
             if len(parent_sha1s) == 0:
                 out += textwrap.indent(commit_str,
                                        "  ", lambda line: line[0] != "*")
@@ -97,6 +96,7 @@ class Commitor():
             else:
                 out += textwrap.indent(commit_str,
                                        "\033[31m| \033[0m", lambda line: line[0] != "*")
+
                 curbrh_sha1 = parent_sha1s[0]
                 out += "\033[31m|\n\033[31m|\n"
 

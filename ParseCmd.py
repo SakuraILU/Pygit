@@ -45,7 +45,7 @@ def parse_cmd():
 
     commit_cmd = subparsers.add_parser(
         "commit", help="Record changes to the repository")
-    commit_cmd.add_argument("-m", default="", dest="msg",
+    commit_cmd.add_argument("-m", default=None, dest="msg",
                             help="Use the given <msg> as the commit message")
 
     log_cmd = subparsers.add_parser(

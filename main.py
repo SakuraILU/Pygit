@@ -1,6 +1,8 @@
 import os
 import struct
 import stat
+import subprocess
+import tempfile
 
 from utils import bread, bwrite
 from Index import Index
@@ -30,6 +32,8 @@ class CatMode(enum.IntEnum):
 class GitRepo():
     __instance = None
     __init = False
+
+    __editor = "vim"
 
     def __new__(cls, *args, **kwargs):
         if cls.__instance == None:
@@ -174,6 +178,16 @@ class GitRepo():
 
     def commit(self, msg):
         commior = Commitor(self.__repo_path)
+        if msg == None:
+            try:
+                f = tempfile.NamedTemporaryFile()
+                pvim = subprocess.Popen(
+                    f"{self.__editor} {f.name}", shell=True)
+                pvim.wait()
+                msg = bread(f.name).decode()
+            finally:
+                f.close()
+
         commior.commit(self.__index.get_ientries(), msg)
 
     def log(self):
