@@ -75,7 +75,9 @@ class Commit():
         return self.__parent_sha1s
 
     def __str__(self):
-        out = f"commit {self.__tree_sha1}\n"
+        out = f"tree:   {self.__tree_sha1}\n"
+        for parent_sha1 in self.__parent_sha1s:
+            out += f"parent: {parent_sha1}\n"
         out += f"Author: {self.__author} <{self.__email}>\n"
         out += f"Date:   {time.asctime(time.localtime(self.__timesample))} {self.__zone_offset}\n"
         out += f"\n"

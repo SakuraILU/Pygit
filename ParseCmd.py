@@ -48,6 +48,13 @@ def parse_cmd():
     commit_cmd.add_argument("-m", default=None, dest="msg",
                             help="Use the given <msg> as the commit message")
 
+    checkout_cmd = subparsers.add_parser(
+        "checkout", help="Switch branches or restore working tree files")
+    checkout_cmd.add_argument(
+        "--cache", action="store_true", dest="index", help="checkout index")
+    checkout_cmd.add_argument(
+        dest="names", nargs="?", help="branch name")
+
     log_cmd = subparsers.add_parser(
         "log")
 

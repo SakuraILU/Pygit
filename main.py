@@ -85,6 +85,10 @@ class GitRepo():
     def add(self, paths):
         # remove repeted path...converted list to set
         paths = set(paths)
+        for path in paths.copy():
+            if os.path.isdir(path):
+                paths.remove(path)
+            paths.update(self.__files_under_dir(path))
 
         for path in paths:
             self.__index.add_ientry(path)
@@ -103,13 +107,13 @@ class GitRepo():
         fchanged, fcreate, fdelete = self.__diff_working2index()
 
         for path in fchanged:
-            print(f"modified:\t{path}")
-        print("")
+            print(f"modified: \t{path}")
+            print("")
         for path in fcreate:
-            print(f"new:\t\t{path}")
-        print("")
+            print(f"untracked:\t{path}")
+            print("")
         for path in fdelete:
-            print(f"deleted: \t{path}")
+            print(f"deleted:  \t{path}")
 
     def diff(self):
         fchanged, _, _ = self.__diff_working2index()
@@ -129,14 +133,7 @@ class GitRepo():
                 print(diff_line)
 
     def __diff_working2index(self):
-        ls = os.walk(self.__repo_path)
-        fpaths = set()
-        for root, dirs, files in ls:
-            if (root == self.__repo_path):
-                dirs.remove(".git")
-            cur_files = {os.path.relpath(os.path.join(
-                root, file), self.__repo_path) for file in files}
-            fpaths.update(cur_files)
+        fpaths = self.__files_under_dir(self.__repo_path)
 
         ientry_map = {entry.getpath(): entry.getsha1()
                       for entry in self.__index.get_ientries()}
@@ -153,6 +150,18 @@ class GitRepo():
                 fchanged.add(path)
 
         return fchanged, fcreate, fdelete
+
+    # relpaths from repo_path...
+    def __files_under_dir(self, root_dir):
+        fpaths = set()
+        for root, dirs, files in os.walk(root_dir):
+            if (os.path.realpath(root) == self.__repo_path):
+                dirs.remove(".git")
+            files = {os.path.relpath(os.path.join(
+                root, file), self.__repo_path) for file in files}
+            # TODO: can ignore some files here...
+            fpaths.update(files)
+        return fpaths
 
     def cat_file(self, mode, sha1_prefix):
         obj = Object(sha1_prefix, self.__repo_path)
@@ -193,6 +202,25 @@ class GitRepo():
     def log(self):
         commitor = Commitor(self.__repo_path)
         commitor.log()
+
+    def checkout(self, index, names):
+
+        if index:
+            self.__restore_index2working(names)
+        else:
+            # branch = names[0]
+            # paths = names[1:]
+            assert False, "only support index restore..."
+
+    def __restore_index2working(self, paths):
+        if paths == None:
+            paths = [entry.getpath() for entry in self.__index.get_ientries()]
+        else:
+            paths = [os.path.relpath(name, self.__repo_path) for path in paths]
+
+        for path in paths:
+            data = self.__index.get_file_data(path)
+            bwrite(os.path.join(self.__repo_path, path), data.encode())
 
 
 if __name__ == "__main__":
@@ -242,3 +270,5 @@ if __name__ == "__main__":
         repo.commit(args.msg)
     elif args.command == "log":
         repo.log()
+    elif args.command == "checkout":
+        repo.checkout(args.index, args.names)

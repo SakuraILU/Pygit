@@ -131,6 +131,7 @@ class Index():
 
         # convert paths to standard relative path to the repository
         path = os.path.relpath(path, self.__repo_path)
+        print(path)
 
         ientry = self.IndexEntry(ctime_s=fstat.st_ctime, ctime_ns=fstat.st_ctime,
                                  mtime_s=fstat.st_mtime, mtime_ns=fstat.st_mtime_ns,
@@ -178,6 +179,11 @@ class Index():
             idata = idata[ientry.getbytelen():]
 
             self.__ientries[ientry.getpath()] = ientry
+
+    def get_file_data(self, path):
+        sha1 = self.__ientries[path].getsha1()
+        obj = Object(sha1, self.__repo_path)
+        return str(obj.getrawobj())
 
     def __str__(self):
         out = ""

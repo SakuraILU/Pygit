@@ -16,7 +16,6 @@ class Commitor():
 
     def __init__(self, repo_path):
         self.__repo_path = repo_path
-
         self.__head_ref_path = os.path.join(self.__repo_path, ".git", "HEAD")
         self.__head_path = os.path.join(
             self.__repo_path, ".git", bread(self.__head_ref_path).decode()[1:])
@@ -75,6 +74,9 @@ class Commitor():
     def get_curbrh_sha1(self):
         return self.__curbrh.sha1
 
+    def __get_commit_by_name(self):
+        pass
+
     def log(self):
         curbrh_sha1 = self.__curbrh.sha1
         out = ""
@@ -87,14 +89,14 @@ class Commitor():
             assert len(parent_sha1s) == 1 or len(
                 parent_sha1s) == 0, "only support a linear commit history..."
 
-            commit_str = str(commit)
-            commit_str = "* \033[33m" + commit_str + "\n"
+            commit_msg = f"* \033[33mcommit {curbrh_sha1}\n" + \
+                str(commit) + "\n"
             if len(parent_sha1s) == 0:
-                out += textwrap.indent(commit_str,
+                out += textwrap.indent(commit_msg,
                                        "  ", lambda line: line[0] != "*")
                 break
             else:
-                out += textwrap.indent(commit_str,
+                out += textwrap.indent(commit_msg,
                                        "\033[31m| \033[0m", lambda line: line[0] != "*")
 
                 curbrh_sha1 = parent_sha1s[0]
