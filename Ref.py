@@ -4,7 +4,19 @@ from utils import bread, bwrite, is_hexdigits
 
 
 class Head():
+    __instance = None
+    __init = False
+
+    def __new__(cls, *args, **kwargs):
+        if cls.__instance == None:
+            cls.__instance = object.__new__(cls)
+        return cls.__instance
+
     def __init__(self, repo_path):
+        if self.__init:
+            return
+        self.__init = True
+
         self.__repo_path = repo_path
         self.__path = os.path.join(repo_path, ".git", "HEAD")
         refed_path = bread(self.__path).decode()
@@ -61,15 +73,15 @@ class Branch():
         assert os.path.exists(self.__path), f"branch {name} not exisit"
         self.__name = name
         self.__sha1 = bread(self.__path).decode()
-        assert self.__sha1 != "", f"branch {name} is empty"
+        # assert self.__sha1 != "", f"branch {name} is empty"
 
     def build_from_memory(self, name, sha1, repo_path):
         self.__path = os.path.join(repo_path, ".git", "refs", "heads", name)
         self.__name = name
         self.__sha1 = sha1
-        self.__set_persist_sha1(self.__sha1)
+        self.set_sha1(self.__sha1)
 
-    def __set_persist_sha1(self, sha1):
+    def set_sha1(self, sha1):
         self.__sha1 = sha1
         bwrite(self.__path, sha1.encode())
 

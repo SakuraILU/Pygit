@@ -8,17 +8,18 @@ import hashlib
 from utils import bread, bwrite
 from Object import Object
 from Blob import Blob
+from Commit import Commit
+from Commitor import Commitor
 
 
 class Index():
-
     class IndexEntry():
         def __init__(self, *args, **kwargs):
             self.__header_len = 62
 
             self.__blen = 0
 
-            if (len(args)) + (len(kwargs)) == 13:
+            if (len(args)) + (len(kwargs)) >= 3:
                 self.build_from_memory(*args, **kwargs)
             elif (len(args)) + (len(kwargs)) == 1:
                 self.build_from_bytes(*args, **kwargs)
@@ -27,8 +28,8 @@ class Index():
                                     \n\t1. (ctime_s, ctime_ns, mtime_s, mtime_ns,dev, ino, mode, uid, gid,  size, sha1, flags, path)\
                                     \n\t2. (bytes)"
 
-        def build_from_memory(self, ctime_s, ctime_ns, mtime_s, mtime_ns,
-                              dev, ino, mode, uid, gid,  size, sha1, flags, path):
+        def build_from_memory(self, mode, sha1, path, ctime_s=0, ctime_ns=0, mtime_s=0, mtime_ns=0,
+                              dev=0, ino=0, uid=0, gid=0,  size=0, flags=0):
             self.__ctime_s = ctime_s
             self.__ctime_ns = ctime_ns
             self.__mtime_s = mtime_s
@@ -161,6 +162,7 @@ class Index():
 
     def read_index(self):
         assert os.path.exists(self.__index_path), "index doesn't exist"
+        self.__ientries = dict()
 
         idata = bread(self.__index_path)
         if len(idata) == 0:
@@ -179,6 +181,17 @@ class Index():
             idata = idata[ientry.getbytelen():]
 
             self.__ientries[ientry.getpath()] = ientry
+
+    def reset_to_commit(self, commit):
+        assert isinstance(commit, Commit), "not a commit"
+        self.__ientries = dict()
+        for tentry in Commitor(self.__repo_path).read_tree(commit):
+            path = tentry.getpath()
+            ientry = self.IndexEntry(mode=tentry.getmode(), sha1=tentry.getsha1(),
+                                     flags=max(len(path), 0xFFF), path=path)
+            self.__ientries[path] = ientry
+        sorted(self.__ientries.items())
+        self.write_index()
 
     def get_file_data(self, path):
         sha1 = self.__ientries[path].getsha1()

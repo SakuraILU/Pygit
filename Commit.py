@@ -1,5 +1,8 @@
 import time
+
 import textwrap
+
+from Tree import Tree
 
 
 class Commit():
@@ -73,6 +76,9 @@ class Commit():
 
     def get_parent_sha1s(self):
         return self.__parent_sha1s
+
+    def get_tree_sha1(self):
+        return self.__tree_sha1
 
     def __str__(self):
         out = f"tree:   {self.__tree_sha1}\n"

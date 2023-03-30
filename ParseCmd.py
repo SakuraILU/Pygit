@@ -6,7 +6,7 @@ def parse_cmd():
     subparsers = parser.add_subparsers(dest="command")
     init_cmd = subparsers.add_parser("init", help='initialize a new repo')
     init_cmd.add_argument(
-        dest="path", nargs=1, help="Create an empty Git repository or reinitialize an existing one")
+        dest="path", help="Create an empty Git repository or reinitialize an existing one")
 
     hashobj_cmd = subparsers.add_parser(
         "hash-object", help="Compute object ID and optionally creates a blob from a file")

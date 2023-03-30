@@ -78,11 +78,14 @@ class GitRepo():
         git_path = os.path.join(self.__repo_path, ".git")
         os.mkdir(git_path)
         git_dirs = ["objects", "refs", "refs/heads"]
-        for dir in git_dirs:
-            os.mkdir(os.path.join(git_path, dir))
+        for git_dir in git_dirs:
+            os.mkdir(os.path.join(git_path, git_dir))
         head_path = os.path.join(git_path, "HEAD")
-        bwrite(head_path, os.path.join("refs", "heads", "master"))
-        bwrite(os.path.join(git_path, "index"), "")
+        bwrite(head_path, os.path.join(
+            "refs", "heads", "master").encode())  # HEAD
+        # master branch
+        os.mknod(os.path.join(git_path, "refs", "heads", "master"))
+        os.mknod(os.path.join(git_path, "index"))  # index
 
     def add(self, paths):
         # remove repeted path...converted list to set
@@ -109,10 +112,14 @@ class GitRepo():
         fchanged, fcreate, fdelete = self.__diff_working2index()
         for path in fchanged:
             print(f"modified: \t{path}")
+        if len(fchanged) != 0:
             print("")
+
         for path in fcreate:
             print(f"untracked:\t{path}")
+        if len(fcreate) != 0:
             print("")
+
         for path in fdelete:
             print(f"deleted:  \t{path}")
 
@@ -164,6 +171,16 @@ class GitRepo():
             fpaths.update(files)
         return fpaths
 
+    def __clean_empty_dirs_under_dir(self, root_dir):
+        for root, dirs, files in os.walk(root_dir):
+            if (os.path.realpath(root) == self.__repo_path):
+                dirs.remove(".git")
+
+            for sub_dir in dirs:
+                self.__clean_empty_dirs_under_dir(sub_dir)
+            if len(os.listdir(root)) == 0:
+                os.rmdir(root)
+
     def cat_file(self, mode, sha1_prefix):
         obj = Object(sha1_prefix, self.__repo_path)
 
@@ -204,12 +221,21 @@ class GitRepo():
         commitor = Commitor(self.__repo_path)
         commitor.log()
 
-    def checkout(self, index, name):
+    def checkout(self, name, index=False):
         if index:
-            self.__restore_index2working(name)
+            if not name:
+                self.__remove_tracted_files()
+                self.__clean_empty_dirs_under_dir(self.__repo_path)
+                for entry in self.__index.get_ientries():
+                    if not stat.S_ISDIR(entry.getmode()):
+                        self.__restore_index2working(entry.getpath())
+            else:
+                self.__restore_index2working(name)
         else:
+            self.__remove_tracted_files()
             head = Head(self.__repo_path)
             # print(name.isnumeric() and len(name) >= 2)
+            sha1 = None
             if is_hexdigits(name) and len(name) >= 2:
                 sha1_prefix = name
                 obj = Object(sha1_prefix, self.__repo_path)
@@ -219,20 +245,27 @@ class GitRepo():
             elif not is_hexdigits(name):
                 print("checkout ", name)
                 head.ref_to(Branch(name, self.__repo_path))
+                sha1 = head.get_sha1()
             else:
                 assert False, "invalid head"
+            commit = Object(head.get_sha1(), self.__repo_path).getrawobj()
 
-    def __restore_index2working(self, paths):
-        if paths == None:
-            paths = [entry.getpath() for entry in self.__index.get_ientries()]
-        else:
-            paths = [os.path.relpath(name, self.__repo_path) for path in paths]
+            self.__index.reset_to_commit(commit)
+            self.checkout(name=None, index=True)
 
-        for path in paths:
-            data = self.__index.get_file_data(path)
-            bwrite(os.path.join(self.__repo_path, path), data.encode())
+    def __restore_index2working(self, path):
+        data = self.__index.get_file_data(path)
+        path = os.path.join(self.__repo_path, path)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        bwrite(path, data.encode())
 
-    def branch(self, ls, name):
+    def __remove_tracted_files(self):
+        _, fcreate, _ = self.__diff_working2index()
+        for file in self.__files_under_dir(self.__repo_path):
+            if file not in fcreate:
+                os.unlink(os.path.join(self.__repo_path, file))
+
+    def branch(self, name, ls=False):
         if ls:
             brhes = Branch.get_branches(self.__repo_path)
             for name, sha1 in brhes.items():
@@ -293,8 +326,8 @@ if __name__ == "__main__":
     elif args.command == "log":
         repo.log()
     elif args.command == "checkout":
-        repo.checkout(args.index, args.names)
+        repo.checkout(args.names, args.index)
     elif args.command == "branch":
         if not args.ls:
             assert args.name != None, "no name specified"
-        repo.branch(args.ls, args.name)
+        repo.branch(args.name, args.ls)
