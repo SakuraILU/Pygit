@@ -18,9 +18,10 @@ class Object():
         TREE = 2
         BLOB = 3
 
-        def getname(enum):
-            type2name = {ObjType.COMMIT: "commit",
-                         ObjType.TREE: "tree", ObjType.BLOB: "blob"}
+        @classmethod
+        def getname(cls, enum):
+            type2name = {cls.COMMIT: "commit",
+                         cls.TREE: "tree", cls.BLOB: "blob"}
             if enum in type2name:
                 return type2name[enum]
             else:
@@ -28,6 +29,7 @@ class Object():
 
     def __init__(self, arg, repo_path):
         self.__objects_dir = os.path.join(repo_path, ".git", "objects")
+        self.__sha1 = None
 
         if isinstance(arg, str):
             self.build_from_bytes(arg)
@@ -67,6 +69,12 @@ class Object():
     def gettypename(self):
         return self.ObjType.getname(self.__type)
 
+    def getsha1(self):
+        print(self.__sha1)
+        if self.__sha1 == None:
+            assert False, "not read from or persist into disk yet..."
+        return self.__sha1
+
     def isblob(self):
         return self.ObjType.BLOB == self.__type
 
@@ -87,7 +95,19 @@ class Object():
                 os.makedirs(os.path.dirname(obj_path), exist_ok=True)
                 bwrite(obj_path, zlib.compress(obj))
 
-        return sha1[:20]
+        self.__sha1 = sha1[:20]
+
+        return self.__sha1
+
+    def read_object(self, sha1_prefix):
+        obj_file = self.find_object(sha1_prefix)
+        data = zlib.decompress(bread(obj_file))
+        obj_type, data = data.split(b" ", maxsplit=1)
+        obj_len, obj_content = data.split(b"\x00", maxsplit=1)
+        assert int(obj_len) == len(
+            obj_content), f"the length of the content {obj_len} is inconsistent with the length property in header {len(obj_content)}, something goes wrong"
+
+        return int(obj_type), int(obj_len), obj_content
 
     def find_object(self, sha1_prefix):
         assert len(
@@ -106,16 +126,6 @@ class Object():
                 if file.startswith(sha1_prefix[2:]):
                     obj_file = os.path.join(dirname, file)
                     break
+
+        self.__sha1 = obj_file[-21:-19] + obj_file[-18:]
         return obj_file
-        haha
-
-    def read_object(self, sha1_prefix):
-        obj_file = self.find_object(sha1_prefix)
-
-        data = zlib.decompress(bread(obj_file))
-        obj_type, data = data.split(b" ", maxsplit=1)
-        obj_len, obj_content = data.split(b"\x00", maxsplit=1)
-        assert int(obj_len) == len(
-            obj_content), f"the length of the content {obj_len} is inconsistent with the length property in header {len(obj_content)}, something goes wrong"
-
-        return int(obj_type), int(obj_len), obj_content

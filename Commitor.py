@@ -9,33 +9,25 @@ from utils import bread, bwrite
 from Commit import Commit
 from Tree import Tree
 from Object import Object
+from Ref import Head, Branch
 
 
 class Commitor():
-    Branch = namedtuple("Branch", ["name", "sha1"])
-
     def __init__(self, repo_path):
         self.__repo_path = repo_path
-        self.__head_ref_path = os.path.join(self.__repo_path, ".git", "HEAD")
-        self.__head_path = os.path.join(
-            self.__repo_path, ".git", bread(self.__head_ref_path).decode()[1:])
-        curbrh_name = os.path.basename(self.__head_path)
-        curbrh_sha1 = bread(self.__head_path).decode()
-        assert len(curbrh_sha1) == 0 or len(
-            curbrh_sha1) == 20, "invalid length of head hash number"
-        self.__curbrh = self.Branch(curbrh_name, curbrh_sha1)
+        self.__head = Head(repo_path)
 
     def commit(self, ientries, msg):
         root = self.__build_tree(ientries)
 
         sha1 = self.__write_tree(root)
-        commit = Commit(sha1, [self.__curbrh.sha1] if len(
-            self.__curbrh.sha1) == 20 else [], msg)
+        commit = Commit(sha1, [self.__head.get_sha1()] if len(
+            self.__head.get_sha1()) == 20 else [], msg)
 
         obj = Object(commit, self.__repo_path)
         sha1 = obj.hash_object()
         print(f"commited to master {sha1}")
-        self.set_curbrh_sha1(sha1)
+        self.__head.move_forward(sha1)
 
     def __build_tree(self, ientries):
         root_node = dict()
@@ -68,17 +60,11 @@ class Commitor():
         sha1 = obj.hash_object()
         return sha1
 
-    def set_curbrh_sha1(self, sha1):
-        bwrite(self.__head_path, sha1.encode())
-
-    def get_curbrh_sha1(self):
-        return self.__curbrh.sha1
-
     def __get_commit_by_name(self):
         pass
 
     def log(self):
-        curbrh_sha1 = self.__curbrh.sha1
+        curbrh_sha1 = self.__head.get_sha1()
         out = ""
         while True:
             obj = Object(curbrh_sha1, self.__repo_path)

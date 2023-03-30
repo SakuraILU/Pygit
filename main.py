@@ -17,6 +17,8 @@ from Tree import Tree
 from Blob import Blob
 from Commit import Commit
 from Commitor import Commitor
+from Ref import Branch, Head
+from utils import is_hexdigits
 
 
 class CatMode(enum.IntEnum):
@@ -105,7 +107,6 @@ class GitRepo():
 
     def status(self):
         fchanged, fcreate, fdelete = self.__diff_working2index()
-
         for path in fchanged:
             print(f"modified: \t{path}")
             print("")
@@ -203,14 +204,21 @@ class GitRepo():
         commitor = Commitor(self.__repo_path)
         commitor.log()
 
-    def checkout(self, index, names):
-
+    def checkout(self, index, name):
         if index:
-            self.__restore_index2working(names)
+            self.__restore_index2working(name)
         else:
-            # branch = names[0]
-            # paths = names[1:]
-            assert False, "only support index restore..."
+            head = Head(self.__repo_path)
+            # print(name.isnumeric() and len(name) >= 2)
+            if is_hexdigits(name) and len(name) >= 2:
+                sha1_prefix = name
+                obj = Object(sha1_prefix, self.__repo_path)
+                sha1 = obj.getsha1()
+                print(f"set hash {sha1}")
+                head.ref_sha1(sha1)
+            else:
+                print("checkout ", name)
+                head.ref_branch(name)
 
     def __restore_index2working(self, paths):
         if paths == None:
@@ -221,6 +229,12 @@ class GitRepo():
         for path in paths:
             data = self.__index.get_file_data(path)
             bwrite(os.path.join(self.__repo_path, path), data.encode())
+
+    def branch(self, name):
+        head = Head(self.__repo_path)
+        sha1 = head.get_sha1()
+        brh = Branch(name, sha1, self.__repo_path)
+        print(f"create a new branch {name} at {sha1}")
 
 
 if __name__ == "__main__":
@@ -272,3 +286,5 @@ if __name__ == "__main__":
         repo.log()
     elif args.command == "checkout":
         repo.checkout(args.index, args.names)
+    elif args.command == "branch":
+        repo.branch(args.name)

@@ -58,4 +58,10 @@ def parse_cmd():
     log_cmd = subparsers.add_parser(
         "log")
 
+    branch_cmd = subparsers.add_parser(
+        "branch", help="List, create, or delete branches")
+    branch_cmd.add_argument(
+        dest="name", help="hash number of the commit (defualt: HEAD)"
+    )
+
     return parser.parse_args()
