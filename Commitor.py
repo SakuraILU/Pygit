@@ -5,7 +5,7 @@ import subprocess
 from collections import namedtuple
 import textwrap
 
-from utils import bread, bwrite
+from utils import bread, bwrite, ColorEscape
 from Commit import Commit
 from Tree import Tree
 from Object import Object
@@ -64,8 +64,14 @@ class Commitor():
         pass
 
     def log(self):
+        brhes = Branch.get_branches(self.__repo_path)
+
         curbrh_sha1 = self.__head.get_sha1()
+
         out = ""
+        brh_msg = f"{ColorEscape.cyan}HEAD -> {ColorEscape.green}{self.__head.get_name()}"
+        brhes.pop(self.__head.get_name())
+
         while True:
             obj = Object(curbrh_sha1, self.__repo_path)
             assert obj.iscommit(), "not a commit..."
@@ -75,7 +81,17 @@ class Commitor():
             assert len(parent_sha1s) == 1 or len(
                 parent_sha1s) == 0, "only support a linear commit history..."
 
-            commit_msg = f"* \033[33mcommit {curbrh_sha1}\n" + \
+            for name, sha1 in brhes.copy().items():
+                if sha1 == curbrh_sha1:
+                    brh_msg += f", {name}"
+                    brhes.pop(name)
+
+            brh_msg = brh_msg.strip(" ,")
+            if len(brh_msg) != 0:
+                brh_msg = f"{ColorEscape.orange}({ColorEscape.green}" + \
+                    brh_msg + f"{ColorEscape.orange})"
+
+            commit_msg = f"* {ColorEscape.orange}commit {curbrh_sha1} " + brh_msg + "\n" + \
                 str(commit) + "\n"
             if len(parent_sha1s) == 0:
                 out += textwrap.indent(commit_msg,
@@ -83,10 +99,12 @@ class Commitor():
                 break
             else:
                 out += textwrap.indent(commit_msg,
-                                       "\033[31m| \033[0m", lambda line: line[0] != "*")
+                                       f"{ColorEscape.red}| {ColorEscape.white}", lambda line: line[0] != "*")
 
                 curbrh_sha1 = parent_sha1s[0]
-                out += "\033[31m|\n\033[31m|\n"
+                out += f"{ColorEscape.red}|\n{ColorEscape.red}|\n"
+
+            brh_msg = ""
 
         pless = subprocess.Popen("less", shell=True, stdin=subprocess.PIPE)
         pless.communicate(input=out.encode())

@@ -18,7 +18,7 @@ from Blob import Blob
 from Commit import Commit
 from Commitor import Commitor
 from Ref import Branch, Head
-from utils import is_hexdigits
+from utils import is_hexdigits, ColorEscape
 
 
 class CatMode(enum.IntEnum):
@@ -215,10 +215,12 @@ class GitRepo():
                 obj = Object(sha1_prefix, self.__repo_path)
                 sha1 = obj.getsha1()
                 print(f"set hash {sha1}")
-                head.ref_sha1(sha1)
-            else:
+                head.ref_to(sha1)
+            elif not is_hexdigits(name):
                 print("checkout ", name)
-                head.ref_branch(name)
+                head.ref_to(Branch(name, self.__repo_path))
+            else:
+                assert False, "invalid head"
 
     def __restore_index2working(self, paths):
         if paths == None:
@@ -230,11 +232,17 @@ class GitRepo():
             data = self.__index.get_file_data(path)
             bwrite(os.path.join(self.__repo_path, path), data.encode())
 
-    def branch(self, name):
-        head = Head(self.__repo_path)
-        sha1 = head.get_sha1()
-        brh = Branch(name, sha1, self.__repo_path)
-        print(f"create a new branch {name} at {sha1}")
+    def branch(self, ls, name):
+        if ls:
+            brhes = Branch.get_branches(self.__repo_path)
+            for name, sha1 in brhes.items():
+                print(
+                    f"{ColorEscape.green}{name}{ColorEscape.white}\t{sha1}")
+        else:
+            head = Head(self.__repo_path)
+            sha1 = head.get_sha1()
+            brh = Branch(name, sha1, self.__repo_path)
+            print(f"create a new branch {name} at {sha1}")
 
 
 if __name__ == "__main__":
@@ -287,4 +295,6 @@ if __name__ == "__main__":
     elif args.command == "checkout":
         repo.checkout(args.index, args.names)
     elif args.command == "branch":
-        repo.branch(args.name)
+        if not args.ls:
+            assert args.name != None, "no name specified"
+        repo.branch(args.ls, args.name)

@@ -9,48 +9,40 @@ class Head():
         self.__path = os.path.join(repo_path, ".git", "HEAD")
         refed_path = bread(self.__path).decode()
 
-        self.__brh = None
-        self.__commit_sha1 = None
+        self.__obj = None
         if not is_hexdigits(refed_path):
             brh_name = os.path.basename(refed_path)
-            self.__brh = Branch(brh_name, repo_path)
+            self.__obj = Branch(brh_name, repo_path)
         else:
-            self.__commit_sha1 = refed_path
+            self.__obj = refed_path
 
     def move_forward(self, sha1):
         if self.is_ref_branch():
-            assert self.__commit_sha1 == None, "it shouldn't ref to sha1..."
-            self.__brh.set_sha1(sha1)
+            self.__obj.set_sha1(sha1)
         elif self.is_ref_sha1():
-            assert self.__brh == None, "it shouldn't ref to branch..."
+            self.ref_to(sha1)
         else:
             assert False, "shouldn't reach here"
 
     def is_ref_branch(self):
-        return self.__brh != None and self.__commit_sha1 == None
+        return isinstance(self.__obj, Branch)
 
     def is_ref_sha1(self):
-        return self.__commit_sha1 != None and self.__brh == None
+        return isinstance(self.__obj, str)
 
-    def ref_sha1(self, sha1):
-        self.__brh = None
-        self.__commit_sha1 = sha1
-        bwrite(self.__path, self.__commit_sha1.encode())
-
-    def ref_branch(self, name):
-        self.__commit_sha1 = None
-        self.__brh = Branch(name, self.__repo_path)
-
-        self.__ref_path = os.path.join(
-            self.__repo_path, "git", "refs", "heads", name)
-        bwrite(self.__path, self.__ref_path.encode())
+    def ref_to(self, obj):
+        self.__obj = obj
+        if self.is_ref_sha1():
+            bwrite(self.__path, self.__obj.encode())
+        elif self.is_ref_branch():
+            bwrite(self.__path, self.__obj.get_full_name().encode())
 
     def get_sha1(self):
-        return self.__brh.get_sha1() if self.__brh != None else self.__commit_sha1
+        return self.__obj.get_sha1() if self.is_ref_branch() else self.__obj
 
     def get_name(self):
-        assert self.__commit_sha1 == None, "doesn't ref to a branch"
-        return self.__brh.get_name()
+        assert self.is_ref_branch(), "doesn't ref to a branch"
+        return self.__obj.get_name()
 
 
 class Branch():
@@ -75,14 +67,26 @@ class Branch():
         self.__path = os.path.join(repo_path, ".git", "refs", "heads", name)
         self.__name = name
         self.__sha1 = sha1
-        self.set_sha1(self.__sha1)
+        self.__set_persist_sha1(self.__sha1)
 
-    def set_sha1(self, sha1):
+    def __set_persist_sha1(self, sha1):
         self.__sha1 = sha1
         bwrite(self.__path, sha1.encode())
 
     def get_name(self):
         return self.__name
 
+    def get_full_name(self):
+        return "/" + os.path.join("refs", "heads", self.__name)
+
     def get_sha1(self):
         return self.__sha1
+
+    @classmethod
+    def get_branches(cls, repo_path):
+        brhes = dict()
+        brh_dir = os.path.join(repo_path, ".git", "refs", "heads")
+        for name in os.listdir(brh_dir):
+            branch = Branch(name, repo_path)
+            brhes[branch.get_name()] = branch.get_sha1()
+        return brhes
