@@ -17,7 +17,7 @@ from Tree import Tree
 from Blob import Blob
 from Commit import Commit
 from Commitor import Commitor
-from Ref import Branch, Head
+from Ref import Branch, Head, Tag
 from utils import is_hexdigits, ColorEscape, can_cvt2str
 
 
@@ -77,7 +77,7 @@ class GitRepo():
         os.mkdir(self.__repo_path)
         git_path = os.path.join(self.__repo_path, ".git")
         os.mkdir(git_path)
-        git_dirs = ["objects", "refs", "refs/heads"]
+        git_dirs = ["objects", "refs", "refs/heads", "refs/tags"]
         for git_dir in git_dirs:
             os.mkdir(os.path.join(git_path, git_dir))
         head_path = os.path.join(git_path, "HEAD")
@@ -248,8 +248,7 @@ class GitRepo():
                 self.__remove_tracted_files()
                 self.__clean_empty_dirs_under_dir(self.__repo_path)
                 for entry in self.__index.get_ientries():
-                    if not stat.S_ISDIR(entry.getmode()):
-                        self.__restore_index2working(entry.getpath())
+                    self.__restore_index2working(entry.getpath())
             else:
                 self.__restore_index2working(name)
         else:
@@ -259,14 +258,16 @@ class GitRepo():
             sha1 = None
             if is_hexdigits(name) and len(name) >= 2:
                 sha1_prefix = name
-                obj = Object(sha1_prefix, self.__repo_path)
-                sha1 = obj.getsha1()
-                print(f"set hash {sha1}")
+                _, sha1 = Object.find_object(sha1_prefix, self.__repo_path)
                 head.ref_to(sha1)
+                print(f"set hash {sha1}")
             elif not is_hexdigits(name):
-                print("checkout ", name)
-                head.ref_to(Branch(name, self.__repo_path))
+                if Branch.is_branch(name, self.__repo_path):
+                    head.ref_to(Branch(name, self.__repo_path))
+                elif Tag.is_tag(name, self.__repo_path):
+                    head.ref_to(Tag(name, self.__repo_path))
                 sha1 = head.get_sha1()
+                print("checkout ", name)
             else:
                 assert False, "invalid head"
             commit = Object(head.get_sha1(), self.__repo_path).getrawobj()
@@ -297,6 +298,18 @@ class GitRepo():
             sha1 = head.get_sha1()
             brh = Branch(name, sha1, self.__repo_path)
             print(f"create a new branch {name} at {sha1}")
+
+    def tag(self, name, ls=False):
+        if ls:
+            tags = Tag.get_tags(self.__repo_path)
+            for name, sha1 in tags.items():
+                print(
+                    f"{ColorEscape.green}{name}{ColorEscape.white}\t{sha1}")
+        else:
+            head = Head(self.__repo_path)
+            sha1 = head.get_sha1()
+            tag = Tag(name, sha1, self.__repo_path)
+            print(f"create a new tag {name} at {sha1}")
 
     def rm(self, paths, index=False):
         paths = set(paths)
@@ -366,6 +379,10 @@ if __name__ == "__main__":
         if not args.ls:
             assert args.name != None, "no name specified"
         repo.branch(args.name, args.ls)
+    elif args.command == "tag":
+        if not args.ls:
+            assert args.name != None, "no name specified"
+        repo.tag(args.name, args.ls)
     elif args.command == "rm":
         repo.rm(args.paths, args.index)
     else:

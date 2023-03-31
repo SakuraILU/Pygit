@@ -63,7 +63,15 @@ def parse_cmd():
     branch_cmd.add_argument(
         "-l", "--list", action="store_true", dest="ls", help="list")
     branch_cmd.add_argument(
-        dest="name", nargs="?", help="hash number of the commit (defualt: HEAD)"
+        dest="name", nargs="?", help="name of the branch"
+    )
+
+    tag_cmd = subparsers.add_parser(
+        "tag", help="List, create, or delete tags")
+    tag_cmd.add_argument(
+        "-l", "--list", action="store_true", dest="ls", help="list")
+    tag_cmd.add_argument(
+        dest="name", nargs="?", help="name of the Tag"
     )
 
     rm_cmd = subparsers.add_parser(
@@ -72,7 +80,7 @@ def parse_cmd():
         "--cached", action="store_true", dest="index", help="Use this option to unstage and remove paths only from the index. Working tree files, whether modified or not , will be left alone."
     )
     rm_cmd.add_argument(
-        dest = "paths", nargs="+", help="file to be removed"
+        dest="paths", nargs="+", help="file to be removed"
     )
 
     return parser.parse_args()

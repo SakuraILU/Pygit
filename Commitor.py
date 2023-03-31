@@ -9,7 +9,7 @@ from utils import bread, bwrite, ColorEscape
 from Commit import Commit
 from Tree import Tree
 from Object import Object
-from Ref import Head, Branch
+from Ref import Head, Branch, Tag
 
 
 class Commitor():
@@ -39,7 +39,7 @@ class Commitor():
         obj = Object(commit, self.__repo_path)
         sha1 = obj.hash_object()
         print(f"commited to master {sha1}")
-        self.__head.move_forward(sha1)
+        self.__head.move_with_branch(sha1)
 
     def __build_tree(self, ientries):
         root_node = dict()
@@ -101,13 +101,15 @@ class Commitor():
 
     def log(self):
         brhes = Branch.get_branches(self.__repo_path)
+        tags = Tag.get_tags(self.__repo_path)
 
         curbrh_sha1 = self.__head.get_sha1()
 
         out = ""
         brh_msg = f"{ColorEscape.cyan}HEAD"
+        tag_msg = ""
         if self.__head.is_ref_branch():
-            brh_msg += f" -> {ColorEscape.green}{self.__head.get_name()}"
+            brh_msg += f" -> {ColorEscape.cyan2}{self.__head.get_name()}"
             brhes.pop(self.__head.get_name())
 
         while True:
@@ -123,13 +125,27 @@ class Commitor():
                 if sha1 == curbrh_sha1:
                     brh_msg += f", {name}"
                     brhes.pop(name)
-
             brh_msg = brh_msg.strip(" ,")
-            if len(brh_msg) != 0:
-                brh_msg = f"{ColorEscape.orange}({ColorEscape.green}" + \
-                    brh_msg + f"{ColorEscape.orange})"
 
-            commit_msg = f"* {ColorEscape.orange}commit {curbrh_sha1} " + brh_msg + "\n" + \
+            for name, sha1 in tags.copy().items():
+                if sha1 == curbrh_sha1:
+                    tag_msg += f", tag: {name}"
+                    tags.pop(name)
+            tag_msg = tag_msg.strip(" ,")
+
+            msg = ""
+            if len(brh_msg + tag_msg) != 0:
+                msg = f"{ColorEscape.orange}("
+                if len(brh_msg) != 0:
+                    msg += f"{ColorEscape.cyan2}{brh_msg}"
+                    if len(tag_msg) != 0:
+                        msg += ", "
+
+                if len(tag_msg) != 0:
+                    msg += f"{ColorEscape.orange1}{tag_msg}"
+                msg += f"{ColorEscape.orange})"
+
+            commit_msg = f"* {ColorEscape.orange}commit {curbrh_sha1} " + msg + "\n" + \
                 str(commit) + "\n"
             if len(parent_sha1s) == 0:
                 out += textwrap.indent(commit_msg,
@@ -143,6 +159,7 @@ class Commitor():
                 out += f"{ColorEscape.red}|\n{ColorEscape.red}|\n"
 
             brh_msg = ""
+            tag_msg = ""
 
         pless = subprocess.Popen("less", shell=True, stdin=subprocess.PIPE)
         pless.communicate(input=out.encode())

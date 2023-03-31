@@ -28,8 +28,8 @@ class Object():
                 assert False, "unsupported object type"
 
     def __init__(self, arg, repo_path):
+        self.__repo_path = repo_path
         self.__objects_dir = os.path.join(repo_path, ".git", "objects")
-        self.__sha1 = None
 
         if isinstance(arg, str):
             self.build_from_bytes(arg)
@@ -52,7 +52,8 @@ class Object():
             assert False, "unsupported object type"
 
     def build_from_bytes(self, sha1_prefix):
-        (self.__type, self.__len, content) = self.read_object(sha1_prefix)
+        (self.__type, self.__len, content) = Object.read_object(
+            sha1_prefix, self.__repo_path)
         if self.isblob():
             self.__raw_obj = Blob(content)
         elif self.istree():
@@ -68,11 +69,6 @@ class Object():
 
     def gettypename(self):
         return self.ObjType.getname(self.__type)
-
-    def getsha1(self):
-        if self.__sha1 == None:
-            assert False, "not read from or persist into disk yet..."
-        return self.__sha1
 
     def isblob(self):
         return self.ObjType.BLOB == self.__type
@@ -94,12 +90,11 @@ class Object():
                 os.makedirs(os.path.dirname(obj_path), exist_ok=True)
                 bwrite(obj_path, zlib.compress(obj))
 
-        self.__sha1 = sha1[:20]
+        return sha1
 
-        return self.__sha1
-
-    def read_object(self, sha1_prefix):
-        obj_file = self.find_object(sha1_prefix)
+    @classmethod
+    def read_object(cls, sha1_prefix, repo_path):
+        obj_file, _ = cls.find_object(sha1_prefix, repo_path)
         data = zlib.decompress(bread(obj_file))
         obj_type, data = data.split(b" ", maxsplit=1)
         obj_len, obj_content = data.split(b"\x00", maxsplit=1)
@@ -108,11 +103,14 @@ class Object():
 
         return int(obj_type), int(obj_len), obj_content
 
-    def find_object(self, sha1_prefix):
+    @classmethod
+    def find_object(cls, sha1_prefix, repo_path):
         assert len(
             sha1_prefix) >= 2, "the length of hash number must be greater or equal to 2"
 
-        dirname = os.path.join(self.__objects_dir, sha1_prefix[:2])
+        cls.__objects_dir = os.path.join(repo_path, ".git", "objects")
+
+        dirname = os.path.join(cls.__objects_dir, sha1_prefix[:2])
         assert os.path.exists(dirname), f"object dir {dirname} dosen't exists"
 
         files = os.listdir(dirname)
@@ -126,5 +124,5 @@ class Object():
                     obj_file = os.path.join(dirname, file)
                     break
 
-        self.__sha1 = obj_file[-21:-19] + obj_file[-18:]
-        return obj_file
+        sha1 = obj_file[-21:-19] + obj_file[-18:]
+        return obj_file, sha1

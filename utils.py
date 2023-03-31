@@ -8,6 +8,8 @@ class ColorEscape():
     blue = "\033[34m"
     magenta = "\033[35m"
     cyan = "\033[36m"
+    cyan2 = "\033[38;5;50m"
+    orange1 = "\033[38;5;214m"
     white = "\033[37m"
     none = "\033[0m"
 
