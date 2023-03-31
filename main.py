@@ -109,19 +109,18 @@ class GitRepo():
                 print(ientry.getpath())
 
     def status(self):
-        fchanged, fcreate, fdelete = self.__diff_working2index()
-        for path in fchanged:
-            print(f"modified: \t{path}")
-        if len(fchanged) != 0:
-            print("")
+        fchanged, fcreate, fdelete = self.__diff_index2commit()
 
         for path in fcreate:
-            print(f"untracked:\t{path}")
-        if len(fcreate) != 0:
-            print("")
-
+            print(f"{ColorEscape.green}new:      \t{path}")
+        for path in fchanged:
+            print(f"{ColorEscape.red}modified: \t{path}")
         for path in fdelete:
-            print(f"deleted:  \t{path}")
+            print(f"{ColorEscape.orange}deleted:  \t{path}")
+
+        _, fcreate, _ = self.__diff_working2index()
+        for path in fcreate:
+            print(f"{ColorEscape.white}untracted: \t{path}")
 
     def diff(self):
         fchanged, _, _ = self.__diff_working2index()
@@ -158,10 +157,30 @@ class GitRepo():
         fdelete = ientry_paths - fpaths
 
         fchanged = set()
-        for path in fpaths.intersection(ientry_map):
+        for path in fpaths.intersection(ientry_paths):
             data = bread(os.path.join(self.__repo_path, path))
             obj = Object(Blob(data), self.__repo_path)
             if obj.hash_object(write=False) != ientry_map[path]:
+                fchanged.add(path)
+        return fchanged, fcreate, fdelete
+
+    def __diff_index2commit(self):
+        ientry_map = {entry.getpath(): entry.getsha1()
+                      for entry in self.__index.get_ientries()}
+        ientry_paths = set(ientry_map.keys())
+
+        commit = Object(Head(self.__repo_path).get_sha1(),
+                        self.__repo_path).getrawobj()
+        tentry_map = {entry.getpath(): entry.getsha1()
+                      for entry in Commitor(self.__repo_path).read_tree(commit)}
+        tentry_paths = set(tentry_map.keys())
+
+        fcreate = ientry_paths - tentry_paths
+        fdelete = tentry_paths - ientry_paths
+
+        fchanged = set()
+        for path in tentry_paths.intersection(ientry_paths):
+            if tentry_map[path] != ientry_map[path]:
                 fchanged.add(path)
 
         return fchanged, fcreate, fdelete
