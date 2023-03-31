@@ -122,6 +122,12 @@ class Branch():
             brhes[branch.get_name()] = branch.get_sha1()
         return brhes
 
+    @classmethod
+    def remove(cls, name, repo_path):
+        assert cls.is_branch(name, repo_path), f"{name} is not a branch name"
+        brh_path = os.path.join(repo_path, ".git", "refs", "heads", name)
+        os.unlink(brh_path)
+
 
 class Tag():
     def __init__(self, *args, **kwargs):
@@ -164,8 +170,14 @@ class Tag():
     @classmethod
     def get_tags(cls, repo_path):
         tags = dict()
-        tags_dir = os.path.join(repo_path, ".git", "refs", "tags")
-        for name in os.listdir(tags_dir):
+        tag_dir = os.path.join(repo_path, ".git", "refs", "tags")
+        for name in os.listdir(tag_dir):
             tag = Tag(name, repo_path)
             tags[tag.get_name()] = tag.get_sha1()
         return tags
+
+    @classmethod
+    def remove(cls, name, repo_path):
+        assert cls.is_tag(name, repo_path), f"{name} is not a branch name"
+        tag_path = os.path.join(repo_path, ".git", "refs", "tags", name)
+        os.unlink(tag_path)

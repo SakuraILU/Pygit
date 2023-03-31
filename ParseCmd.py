@@ -63,6 +63,8 @@ def parse_cmd():
     branch_cmd.add_argument(
         "-l", "--list", action="store_true", dest="ls", help="list")
     branch_cmd.add_argument(
+        "-D", "--delete", action="store_true", dest="rm", help="delete force")
+    branch_cmd.add_argument(
         dest="name", nargs="?", help="name of the branch"
     )
 
@@ -70,6 +72,8 @@ def parse_cmd():
         "tag", help="List, create, or delete tags")
     tag_cmd.add_argument(
         "-l", "--list", action="store_true", dest="ls", help="list")
+    tag_cmd.add_argument(
+        "-D", "--delete", action="store_true", dest="rm", help="delete force")
     tag_cmd.add_argument(
         dest="name", nargs="?", help="name of the Tag"
     )

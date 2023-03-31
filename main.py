@@ -287,24 +287,28 @@ class GitRepo():
             if file not in fcreate:
                 os.unlink(os.path.join(self.__repo_path, file))
 
-    def branch(self, name, ls=False):
+    def branch(self, name, ls=False, rm=False):
         if ls:
             brhes = Branch.get_branches(self.__repo_path)
             for name, sha1 in brhes.items():
                 print(
                     f"{ColorEscape.green}{name}{ColorEscape.white}\t{sha1}")
+        elif rm:
+            Branch.remove(name, self.__repo_path)
         else:
             head = Head(self.__repo_path)
             sha1 = head.get_sha1()
             brh = Branch(name, sha1, self.__repo_path)
             print(f"create a new branch {name} at {sha1}")
 
-    def tag(self, name, ls=False):
+    def tag(self, name, ls=False, rm=False):
         if ls:
             tags = Tag.get_tags(self.__repo_path)
             for name, sha1 in tags.items():
                 print(
                     f"{ColorEscape.green}{name}{ColorEscape.white}\t{sha1}")
+        elif rm:
+            Tag.remove(name, self.__repo_path)
         else:
             head = Head(self.__repo_path)
             sha1 = head.get_sha1()
@@ -349,10 +353,10 @@ if __name__ == "__main__":
         if args.type:
             mode = CatMode.TYPE
         if args.size:
-            assert mode == CatMode.INVALID, "parameter conflicts, -t, -s, -p is incompatible with each other"
+            assert mode == CatMode.INVALID, "parameter conflicts, -t, -s, -p are incompatible with each other"
             mode = CatMode.SIZE
         if args.pretty:
-            assert mode == CatMode.INVALID, "parameter conflicts, -t, -s, -p is incompatible with each other"
+            assert mode == CatMode.INVALID, "parameter conflicts, -t, -s, -p are incompatible with each other"
             mode = CatMode.PRETTY
 
         assert not (mode != CatMode.INVALID and
@@ -378,11 +382,15 @@ if __name__ == "__main__":
     elif args.command == "branch":
         if not args.ls:
             assert args.name != None, "no name specified"
-        repo.branch(args.name, args.ls)
+        assert not (
+            args.ls and args.rm), "parameter conflicts, -l, -D are incompatible with each other"
+        repo.branch(args.name, args.ls, args.rm)
     elif args.command == "tag":
         if not args.ls:
             assert args.name != None, "no name specified"
-        repo.tag(args.name, args.ls)
+        assert not (
+            args.ls and args.rm), "parameter conflicts, -l, -D are incompatible with each other"
+        repo.tag(args.name, args.ls, args.rm)
     elif args.command == "rm":
         repo.rm(args.paths, args.index)
     else:
