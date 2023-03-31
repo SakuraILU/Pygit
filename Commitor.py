@@ -29,8 +29,8 @@ class Commitor():
         self.__repo_path = repo_path
         self.__head = Head(repo_path)
 
-    def commit(self, ientries, msg):
-        root = self.__build_tree(ientries)
+    def commit(self, index, msg):
+        root = self.__build_tree(index.get_ientries())
 
         sha1 = self.__write_tree(root)
         commit = Commit(sha1, [self.__head.get_sha1()] if len(
@@ -45,14 +45,13 @@ class Commitor():
         root_node = dict()
         cur_node = root_node
         for entry in ientries:
-            print(entry.getpath())
             paths = entry.getpath().split(os.path.sep)
             for path in paths[:-1]:
                 if path not in cur_node:
-                    print("add dir", path)
+                    # print("add dir", path)
                     cur_node[path] = {}
                 cur_node = cur_node[path]
-            print("add entry", paths[-1])
+            # print("add entry", paths[-1])
             cur_node[paths[-1]] = entry
             cur_node = root_node
 
@@ -63,12 +62,12 @@ class Commitor():
         for path, node in node.items():
             # print(path, isinstance(node, dict))
             if (isinstance(node, dict)):
-                print("visit dir path", path, "goto ", node)
+                # print("visit dir path", path, "goto ", node)
                 sha1 = self.__write_tree(node)
                 tree.add_tentry(stat.S_IFDIR, path, sha1)
-                print(f"leave dir {path}")
+                # print(f"leave dir {path}")
             else:
-                print("visit leaf path", path)
+                # print("visit leaf path", path)
                 tree.add_tentry(node.getmode(),
                                 path, node.getsha1())
         # print(tree)
@@ -81,7 +80,6 @@ class Commitor():
         return self.__read_tree(tree, "")
 
     def __read_tree(self, tree, path):
-        print(path)
         tentries = set()
         for tentry in tree.get_tentries():
             if (stat.S_ISDIR(tentry.getmode())):
@@ -100,9 +98,6 @@ class Commitor():
                     )
                 )
         return tentries
-
-    def __get_commit_by_name(self):
-        pass
 
     def log(self):
         brhes = Branch.get_branches(self.__repo_path)

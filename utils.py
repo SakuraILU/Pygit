@@ -25,3 +25,12 @@ def bread(file):
 
 def is_hexdigits(s):
     return all(c in "0123456789abcdefABCDEF" for c in s)
+
+
+def can_cvt2str(data):
+    assert isinstance(data, bytes), "must be bytes"
+    try:
+        data.decode()
+    except UnicodeDecodeError as e:
+        return False
+    return True

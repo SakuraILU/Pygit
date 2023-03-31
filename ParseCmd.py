@@ -51,7 +51,7 @@ def parse_cmd():
     checkout_cmd = subparsers.add_parser(
         "checkout", help="Switch branches or restore working tree files")
     checkout_cmd.add_argument(
-        "--cache", action="store_true", dest="index", help="checkout index")
+        "--cached", action="store_true", dest="index", help="checkout index")
     checkout_cmd.add_argument(
         dest="names", nargs="?", help="branch name")
 
@@ -64,6 +64,15 @@ def parse_cmd():
         "-l", "--list", action="store_true", dest="ls", help="list")
     branch_cmd.add_argument(
         dest="name", nargs="?", help="hash number of the commit (defualt: HEAD)"
+    )
+
+    rm_cmd = subparsers.add_parser(
+        "rm", help="Remove files from the working tree and from the index")
+    rm_cmd.add_argument(
+        "--cached", action="store_true", dest="index", help="Use this option to unstage and remove paths only from the index. Working tree files, whether modified or not , will be left alone."
+    )
+    rm_cmd.add_argument(
+        dest = "paths", nargs="+", help="file to be removed"
     )
 
     return parser.parse_args()

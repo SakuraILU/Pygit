@@ -132,7 +132,6 @@ class Index():
 
         # convert paths to standard relative path to the repository
         path = os.path.relpath(path, self.__repo_path)
-        print(path)
 
         ientry = self.IndexEntry(ctime_s=fstat.st_ctime, ctime_ns=fstat.st_ctime,
                                  mtime_s=fstat.st_mtime, mtime_ns=fstat.st_mtime_ns,
@@ -143,6 +142,9 @@ class Index():
 
         self.__ientries[path] = ientry
         sorted(self.__ientries.items())
+
+    def remove_ientry(self, path):
+        self.__ientries.pop(path)
 
     def get_ientries(self):
         return list(self.__ientries.values())
@@ -193,10 +195,10 @@ class Index():
         sorted(self.__ientries.items())
         self.write_index()
 
-    def get_file_data(self, path):
+    def get_bytedata(self, path):
         sha1 = self.__ientries[path].getsha1()
         obj = Object(sha1, self.__repo_path)
-        return str(obj.getrawobj())
+        return obj.getrawobj().serialization()
 
     def __str__(self):
         out = ""

@@ -70,7 +70,6 @@ class Object():
         return self.ObjType.getname(self.__type)
 
     def getsha1(self):
-        print(self.__sha1)
         if self.__sha1 == None:
             assert False, "not read from or persist into disk yet..."
         return self.__sha1

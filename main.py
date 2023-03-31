@@ -18,7 +18,7 @@ from Blob import Blob
 from Commit import Commit
 from Commitor import Commitor
 from Ref import Branch, Head
-from utils import is_hexdigits, ColorEscape
+from utils import is_hexdigits, ColorEscape, can_cvt2str
 
 
 class CatMode(enum.IntEnum):
@@ -93,7 +93,7 @@ class GitRepo():
         for path in paths.copy():
             if os.path.isdir(path):
                 paths.remove(path)
-            paths.update(self.__files_under_dir(path))
+                paths.update(self.__files_under_dir(path))
 
         for path in paths:
             self.__index.add_ientry(path)
@@ -130,14 +130,21 @@ class GitRepo():
                       for ientry in self.__index.get_ientries()}
 
         for path in fchanged:
-            wrk_data = bread(os.path.join(self.__repo_path, path)).decode()
+            file_data = bread(os.path.join(self.__repo_path, path))
+            # print(wrk_data)
             obj = Object(ientry_map[path], self.__repo_path)
-            obj_data = obj.getrawobj().getdata()
             assert obj.isblob(), "only support blob diff"
-            wrk_lines = wrk_data.splitlines()
-            obj_lines = obj_data.splitlines()
+            blob = obj.getrawobj()
+            if not blob.can_cvt2str() or not can_cvt2str(file_data):
+                print(
+                    f"\n{ColorEscape.red}{path} is modified, but is not a txt file, can not to be diffed{ColorEscape.white}\n")
+                continue
+            blob_data = str(blob)
+            file_data = file_data.decode()
+            file_lines = file_data.splitlines()
+            blob_lines = blob_data.splitlines()
 
-            for diff_line in difflib.unified_diff(obj_lines, wrk_lines, os.path.join("a", path), os.path.join("b", path)):
+            for diff_line in difflib.unified_diff(file_lines, blob_lines, os.path.join("a", path), os.path.join("b", path)):
                 print(diff_line)
 
     def __diff_working2index(self):
@@ -165,6 +172,7 @@ class GitRepo():
         for root, dirs, files in os.walk(root_dir):
             if (os.path.realpath(root) == self.__repo_path):
                 dirs.remove(".git")
+
             files = {os.path.relpath(os.path.join(
                 root, file), self.__repo_path) for file in files}
             # TODO: can ignore some files here...
@@ -174,12 +182,21 @@ class GitRepo():
     def __clean_empty_dirs_under_dir(self, root_dir):
         for root, dirs, files in os.walk(root_dir):
             if (os.path.realpath(root) == self.__repo_path):
+                # print(os.path.realpath(root), "remove .git")
                 dirs.remove(".git")
 
             for sub_dir in dirs:
-                self.__clean_empty_dirs_under_dir(sub_dir)
+                self.__clean_empty_dirs_under_dir(
+                    os.path.join(root_dir, sub_dir)
+                )
+
             if len(os.listdir(root)) == 0:
-                os.rmdir(root)
+                if os.path.islink(root):
+                    os.unlink(root)
+                elif os.path.isdir(root):
+                    os.rmdir(root)
+                else:
+                    assert False, "not a dir or symlink->dir"
 
     def cat_file(self, mode, sha1_prefix):
         obj = Object(sha1_prefix, self.__repo_path)
@@ -193,7 +210,11 @@ class GitRepo():
             print(obj.getrawobj())
         elif (mode == CatMode.BLOB):
             assert obj.isblob(), "object type is not blob..."
-            print(obj.getrawobj())
+            blob = obj.getrawobj()
+            if blob.can_cvt2str():
+                print(blob)
+            else:
+                print(blob.serialization())
         elif (mode == CatMode.TREE):
             assert obj.istree(), "object type is not tree..."
             print(obj.getrawobj())
@@ -215,7 +236,7 @@ class GitRepo():
             finally:
                 f.close()
 
-        commior.commit(self.__index.get_ientries(), msg)
+        commior.commit(self.__index, msg)
 
     def log(self):
         commitor = Commitor(self.__repo_path)
@@ -254,10 +275,10 @@ class GitRepo():
             self.checkout(name=None, index=True)
 
     def __restore_index2working(self, path):
-        data = self.__index.get_file_data(path)
+        bdata = self.__index.get_bytedata(path)
         path = os.path.join(self.__repo_path, path)
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        bwrite(path, data.encode())
+        bwrite(path, bdata)
 
     def __remove_tracted_files(self):
         _, fcreate, _ = self.__diff_working2index()
@@ -276,6 +297,20 @@ class GitRepo():
             sha1 = head.get_sha1()
             brh = Branch(name, sha1, self.__repo_path)
             print(f"create a new branch {name} at {sha1}")
+
+    def rm(self, paths, index=False):
+        paths = set(paths)
+        for path in paths.copy():
+            if os.path.isdir(os.path.join(self.__repo_path, path)):
+                paths.remove(path)
+                paths.update(self.__files_under_dir(path))
+
+        for path in paths:
+            self.__index.remove_ientry(path)
+            if not index:
+                os.unlink(os.path.join(self.__repo_path, path))
+                self.__clean_empty_dirs_under_dir(self.__repo_path)
+        self.__index.write_index()
 
 
 if __name__ == "__main__":
@@ -331,3 +366,7 @@ if __name__ == "__main__":
         if not args.ls:
             assert args.name != None, "no name specified"
         repo.branch(args.name, args.ls)
+    elif args.command == "rm":
+        repo.rm(args.paths, args.index)
+    else:
+        assert False, "invalid command"
